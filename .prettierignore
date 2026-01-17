@@ -1,0 +1,8 @@
+# file in which I want to ignore prettier formatting
+
+/.vscode
+/node_modules
+./dist
+*.env
+.env
+.env.*
