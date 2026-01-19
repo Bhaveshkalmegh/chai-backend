@@ -51,7 +51,7 @@ const userSchema =new mongoose.Schema(
         }
 )
 
-// we ant to encrypt password befor save 
+// we want to encrypt password befor save 
 
 userSchema.pre("save", async function(){
     if(!this.isModified("password")) return next(); // if password is not modified thenn return it .
