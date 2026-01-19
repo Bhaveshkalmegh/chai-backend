@@ -7,8 +7,8 @@ class ApiError extends Error{
         this.success=false;
         this.errors=errors;
         
-        if(statck){
-            this.stack=statck;
+        if(stack){
+            this.stack=stack;
         }
         else{
             // help to track where the error is occured in the code
