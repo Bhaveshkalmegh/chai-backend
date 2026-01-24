@@ -54,8 +54,8 @@ const userSchema =new mongoose.Schema(
 // we want to encrypt password befor save 
 
 userSchema.pre("save", async function(){
-    if(!this.isModified("password")) return next(); // if password is not modified thenn return it .
-    this.password = bcrypt.hash(this.password,10) //here issue is if a person change his name as well it will encrypt it again
+    if(!this.isModified("password")) return next(); // if password is not modified thenn return it . Below Issue Solved by this condition 
+    this.password = await bcrypt.hash(this.password,10) //here issue is if a person change his name as well it will encrypt it again 
     next()
 })
 
