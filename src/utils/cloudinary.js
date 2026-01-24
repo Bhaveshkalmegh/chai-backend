@@ -1,7 +1,7 @@
 // here cloudinary will get a path of local file we will upload on server if successful remove a file from local Machine 
 
 // In fileSystem we just unlink file from fileSystem to delete from database
-// If upload fail then also we will remove that file from loacl machine as it is of no use 
+// If upload fail then also we will remove that file from loacl machine as it is of no use - user have to upload again
 
 
 import {v2 as cloudinary} from "cloudinary"
@@ -18,7 +18,7 @@ cloudinary.config({
 
 const UploadOnCloudinary =async (localFilePath) =>{
     try {
-        if(!localFilePath) return null;
+        if(!localFilePath) return null; // if no file path is provided return null
         // uplaod the file on cloudinary
         const response = await cloudinary.uploader.upload(localFilePath,{
             resource_type:"auto"
@@ -27,6 +27,7 @@ const UploadOnCloudinary =async (localFilePath) =>{
         return response;
     } catch (error) {
         fs.unlinkSync(localFilePath) //since upload got failed that file of no use user should upload again
+        return null;
     }
 }
 
