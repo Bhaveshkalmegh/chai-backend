@@ -18,12 +18,12 @@ const registeruser = asynchandler(async(req,res)=>{
 
 
     // Got user details from frontend
-    const {fullname , email, username ,password}=req.body
+    const {fullName , email, username ,password}=req.body
     console.log("email",email);
-
+    // console.log(req.body);
     //  Empty field validation
     if(
-        [fullname, email,username, password].some((fields)=>{
+        [fullName, email,username, password].some((fields)=>{
             return fields.trim()===""
         })
     ){
@@ -32,7 +32,7 @@ const registeruser = asynchandler(async(req,res)=>{
 
 
     // check if user already exists
-    const existedUser =   User.findOne({
+    const existedUser = await  User.findOne({
         $or:[{ username } ,{ email }]
     })
     if(existedUser){
@@ -41,8 +41,17 @@ const registeruser = asynchandler(async(req,res)=>{
 
 
     //check for images
+    // console.log("req.files",req.files);
     const avatarLocalPath = req.files?.avatar[0]?.path;
-    const coverImageLocalPath = req.files?.coverImage[0]?.path; 
+    // const coverImageLocalPath = req.files?.coverImage[0]?.path;// we are not checking wether a file contains req.files or not 
+    
+    let coverImageLocalPath;
+    if(req.files && Array.isArray(req.files.coverImage) && req.files.coverImage.Length>0){
+        coverImageLocalPath = req.files.coverImage[0].path;
+    }
+  
+    
+
     if (!avatarLocalPath){
         throw new ApiError(400,"Avatar is required")
     }
@@ -58,7 +67,7 @@ const registeruser = asynchandler(async(req,res)=>{
      
     // create user object
     const user = await User.create({
-        fullname,
+        fullName,
         avatar: avatar.url,
         coverImage: coverImage?.url||"",
         email,
