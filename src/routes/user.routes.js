@@ -1,7 +1,7 @@
 import Router from "express";
-import { registeruser } from "../controllers/user.controller.js";
+import { registerUser,loginUser,logoutUser } from "../controllers/user.controller.js";
 import {upload} from "../middlewares/multer.middleware.js";
-
+import {verifyJWT} from "../middlewares/auth.middleware.js";
 const router = Router();
 
 router.route("/register")
@@ -15,6 +15,10 @@ router.route("/register")
         }
 
     ]),
-    registeruser);
+    registerUser);
+
+router.route("/login").post(loginUser);
+router.route("/logout").post(verifyJWT,logoutUser); 
+// router.route("/logout").post(verifyJWT,anothermiddleware,logoutUser); // her verifyJWT will act as a middleware to will execute first before logoutUser controller 
 
 export default router;

@@ -4,7 +4,30 @@ import {User} from "../models/user.model.js";
 import {UploadOnCloudinary} from "../utils/cloudinary.js";
 import {ApiResponse} from "../utils/ApiResponse.js";
 
-const registeruser = asynchandler(async(req,res)=>{
+
+const generateAccessTokenAndRefreshToken = async(userId)=>{
+    try{
+        const user = await User.findById(userId);
+        if(!user){
+            throw new ApiError (404,"User not found to generate access and refresh token")
+        }
+        const accessToken = user.generateAccessToken()
+        const refreshToken = user.generateRefreshToken()
+        // we have to store refresh token in db
+        user.refreshTokens= refreshToken
+        //save user after updating refresh token
+        await user.save({validateBeforeSave:false}) // will validate the required fields like password etc before saving but here we are not updating password so its ok
+        return {accessToken,refreshToken}
+
+    }    
+    catch(err){
+        throw new ApiError(500,"unable to generate access and refresh token")
+    }
+}
+
+
+
+const registerUser = asynchandler(async(req,res)=>{
     // get user details from frontend
     // validation - not empty (always contains seperate method for validation in different file)
     // check if user already exists : username , email
@@ -41,15 +64,15 @@ const registeruser = asynchandler(async(req,res)=>{
 
 
     //check for images
-    // console.log("req.files",req.files);
+    console.log("req.files",req.files);
     const avatarLocalPath = req.files?.avatar[0]?.path;
+    // console.log(avatarLocalPath);
     // const coverImageLocalPath = req.files?.coverImage[0]?.path;// we are not checking wether a file contains req.files or not 
     
     let coverImageLocalPath;
-    if(req.files && Array.isArray(req.files.coverImage) && req.files.coverImage.Length>0){
-        coverImageLocalPath = req.files.coverImage[0].path;
+    if (req.files && Array.isArray(req.files.coverImage) && req.files.coverImage.length > 0) {
+        coverImageLocalPath = req.files.coverImage[0].path
     }
-  
     
 
     if (!avatarLocalPath){
@@ -90,4 +113,109 @@ const registeruser = asynchandler(async(req,res)=>{
 
 })
 
-export {registeruser};
+
+const loginUser = asynchandler(async(req,res)=>{
+    
+    // get user credanttials from req body
+    // usershould able to login using username or email
+    // validate - wether existing registerd user or not 
+    // match passsword
+    // generate jwt token - access token ,refresh token
+    // send user details and tokens in cookie 
+    // send successfull login response
+
+    const {email,username,password} = req.body;
+
+    if(!username && !email){
+        throw new ApiError (400,"Username or email is required to login")
+    }
+
+    const user = await User.findOne({
+        $or :[{username},{email}]
+    })
+
+    if(!user){
+        throw new ApiError (404,"User not found with given credentials")
+    }
+
+    const ispasswordvalid = await user.isPasswordCorrect(password); // it will return true or false
+
+    if(!ispasswordvalid){
+        throw new ApiError (401,"Invalid password");
+    }
+
+    const {accessToken, refreshToken}=await generateAccessTokenAndRefreshToken(user._id)
+
+    // access token and refresh token not upadated yet for current object reference
+    // loggedInUser.accessToken = accessToken // this already update in reference object in generateAccessTokenAndRefreshToken function 
+    // loggedInUser.refreshToken = refreshToken
+    const loggedInUser =await user.findByID(user._id).select(" -password -refreshTokens") // remove password and refresh token for sending data in cookie to user 
+
+
+    const options = {
+        httpOnly : true,// not accessible by javascript on frontend
+        secure :true // only send on https
+    }
+
+
+    return res
+    .status(200)
+    .cookie("accessToken",accessToken,options)
+    .cookie("refreshToken",refreshToken,options)
+    .json(
+        new ApiResponse(200,{
+            user:loggedInUser,
+            accessToken:accessToken,
+            refreshToken:refreshToken
+        },
+        "User logged in successfully"
+    )
+    )
+
+
+})
+
+
+    const logoutUser= asynchandler(async(req,res)=>{
+        //remove access token and refresh token from cookies as well as user database 
+        // here the issue is not having anything to identify which user is logging out if we gave user to enter id or email to logout then any one can logout anyone 
+        // solution 
+        // we have to use middleware to validate where user exist or not 
+
+
+        // req from verifyJWT middleware going to forward in logout so we can access user from req object
+        // since we had done const user= await User.findById(decodedToken._id).select("-password -refershTokens")
+        // we had user -> find User from db -> we can delete refresh token from there
+        // we can do find by ID  ----> we have to bring user -> delete refresh token -> save user validate false 
+        // betteer to use findByIdAndUpdate method
+
+
+        await User.findByIdAndUpdate(
+             req.user._id,
+            {
+                $set:{
+                    refershTokens:undefined
+                }
+            },
+                {
+                    new:true
+                }
+            
+        )
+
+        options={
+            httpOnly:true,
+            secure:true
+        }
+
+        return res
+        .status(200)
+        .clearCookie("accessToken",options)
+        .clearCookie("refreshToken",options)
+        .json(new ApiResponse(200,{},"User Logged out successfully"))
+
+    })
+
+    
+
+export {registerUser ,loginUser ,logoutUser};
